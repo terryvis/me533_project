@@ -71,11 +71,11 @@ for i = 2:N
     u_prev = model.getJointSet().get(1).getCoordinate().getValue(state);
 
     % define Y (states)
-    Y = [1 u_dot (u_prev^2 + 2/lambda*u_prev*u_dot) (x_ddot(i-1) + lambda*x_d(i-1))];
+    Y = [1 u_dot (lambda*u_prev^2 + 2*u_prev*u_dot) (x_ddot(i-1) + lambda*x_d(i-1))];
     
     % define controller params
-    a_c = [-a0/a1; -1/lambda; -a2/a1; 1/(lambda*a1)];
-    k = 1/(lambda*a1);
+    a_c = [-a0/a1; -1/lambda; -a2/(lambda*a1); 1/(lambda*a1)];
+    k = -1/(lambda*a1);
 
     % define s (x_dot - x_ddot + lambda*x - lambda-x_d)
     s = x_dot(i-1) - x_ddot(i-1) + lambda*(x(i-1) - x_d(i-1));
@@ -84,11 +84,8 @@ for i = 2:N
     u(i) = Y*a_c - k*s;
     % u(i) = pi/2 + pi/2*sin(t(i));
 
-
-
-    % TODO: update params (adaptation law)
     % update controller params based on adaptation law
-    a_c = a_c - dt*P*Y'*s;
+    % a_c = a_c - dt*P*Y'*s;
 
     % compute a0, a1, a2
     a1_new = 1/(lambda*a_c(4));
@@ -106,7 +103,7 @@ for i = 2:N
     x(i) = model.getMuscles().get(3).getFiberLength(state);
     x_dot(i) = model.getMuscles().get(3).getFiberVelocity(state);
 
-    disp(u_prev);
+    disp(model.getMuscles().get(3).getActivation(state));
 end
 
 
