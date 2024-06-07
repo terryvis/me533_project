@@ -79,7 +79,7 @@ for i = 2:N
 
     % u_osim = Vector(6); % gives error (missing constructor)
 
-    model.setControls(u_osim);
+    % model.setControls(u_osim);
 
     % TODO: set external force/torque according to above policy
     f_max = model.getMuscles.get(3).getMaxIsometricForce();
