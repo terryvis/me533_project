@@ -11,6 +11,11 @@ import org.opensim.modeling.*;
 model = Model('arm26.osim');
 state = model.initSystem();
 
+state.setTime(0);
+
+% disable gravity
+model.setGravity(Vec3(0,0,0));
+
 % setup simulation
 N = 100;
 tf = 10;
@@ -72,8 +77,18 @@ for i = 2:N
     % update controller params based on adaptation law
     a = a - dt*P*Y'*s;
 
+    % u_osim = Vector(6); % gives error (missing constructor)
+
+    model.setControls(u_osim);
+
     % TODO: set external force/torque according to above policy
+    f_max = model.getMuscles.get(3).getMaxIsometricForce();
+    f_l = model.getMuscles.get(3).getActiveForceLengthMultiplier(state);
+    f_v = model.getMuscles.get(3).getForceVelocityMultiplier(state);
+    alpha = model.getMuscles.get(3).getPennationAngle(state);
+    f_pe = model.getMuscles.get(3).getPassiveForceMultiplier(state);
     
+
 
     % let muscle come to equilibrium
     model.realizeVelocity(state);
