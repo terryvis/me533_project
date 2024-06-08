@@ -1,5 +1,5 @@
 % simulation code for me533 final project/term paper
-% simulate musculoskeletal geometry model (2nd-order poly)
+% simulate joint dynamics model (2nd order mass/spring/damper)
 % using OpenSim arm26 model
 
 clc;close all;clear variables;
@@ -22,8 +22,7 @@ state.setTime(0);
 
 
 % disable gravity
-% model.setGravity(Vec3(0,0,0));
-g = 0;
+model.setGravity(Vec3(0,0,0));
 
 % setup simulation
 N = 1000;
@@ -54,15 +53,16 @@ x_d = pi/3*ones(1,N);% + sin(pi*t);
 x_ddot = [0 (x_d(2:end)-x_d(1:end-1))/dt];
 x_d_accel = [0 (x_ddot(2:end)-x_ddot(1:end-1))/dt];
 
-% define param vector a = [I B K m*l]' with initial guesses
-a = 0.5*ones(4,1);
+% define param vector a = [I B K]' with initial guesses
+a = 0.5*ones(3,1);
 
 % define additional params for control/adaptation
 lambda = 1/(dt*10);
 k = 1;
-P = 0.01*eye(4);
+P = 0.01*eye(3);
 
-
+% unlock elbow joint
+model.getJointSet.get(1).getCoordinate().setLocked(state, false);
 
 % run simulation
 for i = 2:N
@@ -75,10 +75,9 @@ for i = 2:N
     I = a(1);
     B = a(2);
     K = a(3);
-    ml = a(4);
 
     % define Y (states)
-    Y = [(lambda * (x_ddot(i-1) - x_d(i-1)) + x_d_accel(i-1)) x_dot(i-1) x(i-1) g*sin(x(i-1))];
+    Y = [(lambda * (x_ddot(i-1) - x_d(i-1)) + x_d_accel(i-1)) x_dot(i-1) x(i-1)];
 
     % define s (x_dot - x_ddot + lambda*x - lambda-x_d)
     s = x_dot(i-1) - x_ddot(i-1) + lambda*(x(i-1) - x_d(i-1));
@@ -89,38 +88,13 @@ for i = 2:N
     % update controller params based on adaptation law
     a = a - dt*P*Y'*s;
 
-    % perform forward simulation
-    % model.realizeVelocity(state);
-
-    % TODO: set external force/torque according to above policy
-
-
-    % f_max = model.getMuscles.get(3).getMaxIsometricForce();
-    % f_l = model.getMuscles.get(3).getActiveForceLengthMultiplier(state);
-    % f_v = model.getMuscles.get(3).getForceVelocityMultiplier(state);
-    % alpha = model.getMuscles.get(3).getPennationAngle(state);
-    % f_pe = model.getMuscles.get(3).getPassiveForceMultiplier(state);
-    % 
-    % % define activation vector and set all entries to 0.001
-    % u_osim = Vector(6,0.0);
-    % 
-    % % compute desired activation
-    % act = u(i)/(f_l*f_v*f_max*cos(alpha)) - f_pe/(f_l*f_v*f_max);
-    % disp(act);
-    % 
-    % % set BIClong activation to desired value
-    % u_osim.set(3, act);
-    % 
-    % model.getMuscles.get(3).setActivation(state, act);
-
+    % set external force according to control law above
     model.updActuators().get('elbowActuator').addInControls(Vector(1,u(i)), model.updControls(state));
 
-    % disp(model.getMuscles().get(3).getFiberForce(state));
-
-    % let muscle come to equilibrium
+    % perform forward simulation and let muscles come to equilibrium
     model.realizeDynamics(state);
     model.realizeVelocity(state);
-    model.equilibrateMuscles(state);
+    % model.equilibrateMuscles(state);
 
     % compute x and x_dot
     x(i) = model.getJointSet().get(1).getCoordinate().getValue(state);
@@ -128,6 +102,7 @@ for i = 2:N
 
     % debug - print states
     fprintf('Time: %f, Applied Torque: %f, Angle: %f\n', t(i), u(i), x(i));
+
 end
 
 
