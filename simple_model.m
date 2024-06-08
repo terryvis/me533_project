@@ -36,6 +36,11 @@ x_d_accel = [0 (x_ddot(2:end)-x_ddot(1:end-1))/dt];
 % define param vector a = [I B K]' with initial guesses
 a = 0.5*ones(3,1);
 
+% define plant params I0, B0, K0
+I0 = 100;
+B0 = 0.2;
+K0 = 0.1;
+
 % define additional params for control/adaptation
 lambda = 1/(dt*10);
 k = 1;
@@ -63,17 +68,15 @@ for i = 2:N
     a = a - dt*P*Y'*s;
 
     % TODO: use ode solver to compute phi based on torque
-    
-    % define y = [x, x_dot]
-    odefun = @(t,y) [y(2); (u(i) - B*y(2) - K*y(1))/I];
-
-    y0 = [x(i-1), x_dot(i-1)];
-    tspan = t(i-1:i);
-    [t_ode,y] = ode45(odefun, tspan, y0);
+    if i>2
+        x_accel = (x_dot(i-1) - x_dot(i-2))/dt;
+    else
+        x_accel = 0;
+    end
 
     % compute x and x_dot
-    x(i) = y(1);
-    x_dot(i) = y(2);
+    x(i) = (u(i) - I0*x_accel - B0*x_dot(i-1))/K0;
+    x_dot(i) = (x(i) - x(i-1))/dt;
 
     % debug - print states
     fprintf('Time: %f, Applied Torque: %f, Angle: %f\n', t(i), u(i), x(i));
